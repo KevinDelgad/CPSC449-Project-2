@@ -1,44 +1,44 @@
-PRAGMA foreign_keys=ON;
+PRAGMA foreign_KEYs=ON;
 BEGIN TRANSACTION;
 CREATE TABLE user( 
-    userid int primary key, 
-    fname text not null, 
-    lname text not null, 
-    passwrd varchar(20) not null, 
+    userid INTEGER PRIMARY KEY AUTOINCREMENT, 
+    fname TEXT NOT NULL, 
+    lname TEXT NOT NULL, 
+    passwrd VARCHAR(20) NOT NULL, 
     UNIQUE(passwrd)
 );
 
 CREATE TABLE games (
-    gamesid int primary key,
-    userid int,
-    answerid int,
-    gameid int,
+    gamesid INTEGER PRIMARY KEY AUTOINCREMENT,
+    userid INTEGER,
+    answerid INTEGER,
+    gameid INTEGER,
     FOREIGN KEY(userid) REFERENCES user(userid),
     FOREIGN KEY (answerid) REFERENCES answer(answerid),
     FOREIGN KEY(gameid) REFERENCES game(gameid)
 );
 
 CREATE TABLE game(
-    gameid int primary key,
-    guesses int,
-    gstate VARCHAR(11)
+    gameid INTEGER PRIMARY KEY AUTOINCREMENT,
+    guesses INTEGER,
+    gstate VARCHAR(12)
 );
 
 CREATE TABLE guess(
-    guessid int primary key,
-    gameid int,
-    guessedword varchar(5),
-    accuracy varchar(5),
+    guessid INTEGER PRIMARY KEY AUTOINCREMENT,
+    gameid INTEGER,
+    guessedword VARCHAR(5),
+    accuracy VARCHAR(5),
     FOREIGN KEY(gameid) REFERENCES game(gameid)
 );
 
 CREATE TABLE answer(
-    answerid int primary key,
-    answord varchar(5)
+    answerid INTEGER PRIMARY KEY AUTOINCREMENT,
+    answord VARCHAR(5)
 );
 
 CREATE TABLE valid_word(
-    valid_id int primary key,
-    valword varchar(5)
+    valid_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    valword VARCHAR(5)
 );
 COMMIT;
