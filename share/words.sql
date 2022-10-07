@@ -3,9 +3,10 @@ BEGIN TRANSACTION;
 CREATE TABLE user( 
     userid INTEGER PRIMARY KEY AUTOINCREMENT, 
     fname TEXT NOT NULL, 
-    lname TEXT NOT NULL, 
+    lname TEXT NOT NULL,
+    username VARCHAR(25) NOT NULL, 
     passwrd VARCHAR(20) NOT NULL, 
-    UNIQUE(passwrd)
+    UNIQUE(username)
 );
 
 CREATE TABLE games (
