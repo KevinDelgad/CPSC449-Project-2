@@ -31,3 +31,10 @@ async def close_connection(exception):
     db = getattr(g, "_sqlite_db", None)
     if db is not None:
         await db.disconnect()
+
+
+@app.route("/", methods=['GET'])
+async def test():
+    db = await _get_db()
+    all_answers = await db.fetch_all("SELECT * FROM answer;")
+    return list(map(dict, all_answers))
