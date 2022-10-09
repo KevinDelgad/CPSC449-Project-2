@@ -1,3 +1,4 @@
+from cmath import exp
 import databases
 import collections
 import dataclasses
@@ -21,6 +22,11 @@ class User:
     last_name: str;
     user_name: str;
     password: str;
+
+@dataclasses.dataclass
+class Game:
+    username: str;
+
 
 async def _connect_db():
     database = databases.Database(app.config["DATABASES"]["URL"])
@@ -65,3 +71,12 @@ async def create_user(data):
 
     user["id"] = id
     return user, 201, {"Location": f"/users/{id}"}
+
+@app.route("/games/", methods=["POST"])
+@validate_request(Game)
+async def create_game(data):
+    db = await _get_db()
+    username = dataclasses.asdict(data)
+    valid_user = await db.fetch_one("SELECT username FROM user WHERE username = :username", username)
+    abort(404)
+    
