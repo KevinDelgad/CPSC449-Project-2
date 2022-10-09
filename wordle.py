@@ -55,7 +55,7 @@ async def create_user(data):
     try:
         id = await db.execute(
             """
-            INSERT INTO user(fname, lname, username, pssword)
+            INSERT INTO user(fname, lname, username, passwrd)
             VALUES(:first_name, :last_name, :user_name, :password)
             """,
             user
