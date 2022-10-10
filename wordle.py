@@ -78,5 +78,17 @@ async def create_game(data):
     db = await _get_db()
     username = dataclasses.asdict(data)
     valid_user = await db.fetch_one("SELECT username FROM user WHERE username = :username", username)
-    abort(404)
-    
+    if(valid_user):
+        word = await db.fetch_one("SELECT * FROM answer ORDER BY RANDOM() LIMIT 1")
+        userid = await db.fetch_one("SELECT userid FROM user WHERE username = :username", username)
+        
+        try:
+            query = "INSERT INTO game(guesses, gstate) VALUES(:guesses, :gstate)"
+            values={"guesses": 0, "gstate": "In-progress"}
+            await db.execute(query=query, values=values)
+        except sqlite3.IntegrityError as e:
+            abort(409, e)
+            
+        return dict(userid)
+    else:
+        abort(404)    
