@@ -5,7 +5,7 @@ from quart import Quart, g, request, abort
 app = Quart(__name__)
 
 # Database connection
-dbConn = sqlite3.connect("wordle.db")
+dbConn = sqlite3.connect("/var/wordle.db")
 # SQLite needs a cursor to execute commands
 cursor = dbConn.cursor()
 
