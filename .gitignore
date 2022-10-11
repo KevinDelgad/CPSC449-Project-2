@@ -1,2 +1,3 @@
 var/wordle.db
 __pycache__/wordle.cpython-310.pyc
+.vscode
