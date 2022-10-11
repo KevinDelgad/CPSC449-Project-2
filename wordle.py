@@ -63,6 +63,7 @@ async def create_user(data):
     db = await _get_db()
     user = dataclasses.asdict(data)
     try:
+        #Attempt to create new user in database
         id = await db.execute(
             """
             INSERT INTO user(fname, lname, username, passwrd)
@@ -70,11 +71,12 @@ async def create_user(data):
             """,
             user,
         )
+    #Return 409 error if username is already in table
     except sqlite3.IntegrityError as e:
         abort(409, e)
 
     user["id"] = id
-    return user, 201, {"Location": f"/users/{id}"}
+    return user, 201
 
 
 @app.route("/games/", methods=["POST"])
@@ -105,21 +107,21 @@ async def create_game(data):
                 "SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1"
             )
 
-        try:
-            # Create new game with 0 guesses
-            query = "INSERT INTO game(guesses, gstate) VALUES(:guesses, :gstate)"
-            values = {"guesses": 0, "gstate": "In-progress"}
-            cur = await db.execute(query=query, values=values)
-        except sqlite3.IntegrityError as e:
-            abort(409, e)
+        # Create new game with 0 guesses
+        query = "INSERT INTO game(guesses, gstate) VALUES(:guesses, :gstate)"
+        values = {"guesses": 0, "gstate": "In-progress"}
+        cur = await db.execute(query=query, values=values)
 
-        try:
-            # Create new row into Games table which connect with the recently connected game
-            query = "INSERT INTO games(userid, answerid, gameid) VALUES(:userid, :answerid, :gameid)"
-            values = {"userid": userid[0], "answerid": word[0], "gameid": cur}
-            cur = await db.execute(query=query, values=values)
-        except sqlite3.IntegrityError as e:
-            abort(409, e)
-        return dict(userid)
+        # Create new row into Games table which connect with the recently connected game
+        query = "INSERT INTO games(userid, answerid, gameid) VALUES(:userid, :answerid, :gameid)"
+        values = {"userid": userid[0], "answerid": word[0], "gameid": cur}
+        cur = await db.execute(query=query, values=values)
+
+        return values, 201
+
     else:
         abort(404)
+
+@app.errorhandler(409)
+def conflict(e):
+    return {"error": str(e)}, 409
