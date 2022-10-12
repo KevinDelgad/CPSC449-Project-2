@@ -23,7 +23,7 @@ def _get_db():
 # User authentication endpoint
 @app.route("/user-auth", methods=["GET"])
 async def userAuth( username, password ):
-    db = _get_db()
+    db = await _get_db()
     # Selection query with placeholders
     # Best practice to avoid SQL injections
     select_query = "SELECT * FROM user WHERE username=%s AND passwrd=%s;"
