@@ -30,6 +30,11 @@ class User:
 class Game:
     username: str
 
+@dataclasses.dataclass
+class Guess:
+    gameid: int
+    word: str
+
 
 async def _connect_db():
     database = databases.Database(app.config["DATABASES"]["URL"])
@@ -55,8 +60,6 @@ async def test():
     db = await _get_db()
     all_answers = await db.fetch_all("SELECT * FROM answer;")
     return list(map(dict, all_answers))
-
-
 
 @app.route("/users/", methods=["POST"])
 @validate_request(User)
@@ -88,11 +91,11 @@ async def userAuth( username, password ):
     select_query = "SELECT * FROM user WHERE username=%s AND passwrd=%s;"
 
     # Run the command
-    results = db.execute( selection_query, ( username, password ) )
-
+    results = db.execute(select_query, ( username, password ) )
+    
     # Is the user registered?
     if results.fetch_all():
-        return { "authenticated": true }, 200
+        return { "authenticated": True }, 200
     else:
         return 401, { "WWW-Authenticate": "Fake Realm" }
 
@@ -140,6 +143,63 @@ async def create_game(data):
     else:
         abort(404)
 
+
+#Should validate to check if guess is in valid_word table
+#if it is then insert into guess table 
+#update game table by decrementing guess variable
+#if word is not valid throw 404 exception
+@app.route("/guess/",methods=["POST"])
+@validate_request(Guess)
+async def add_guess(data):
+    db = await _get_db() 
+
+    currGame = dataclasses.asdict(data)
+    #checks whether guessed word is the answer for that game
+    isAnswer= await db.fetch_one(
+        "SELECT * FROM answer as a where (select count(*) from games where gameid = :gameid and answerid = a.answerid)>=1 and a.answord = :word;", currGame
+        )
+    print(isAnswer)
+    #is guessed word the answer
+    if isAnswer is not None and len(isAnswer) >= 1: #cigar is answer
+        #update game status
+        try:
+            id_games = await db.execute(
+                """
+                UPDATE game set gstate = :status where gameid = :gameid
+                """,values={"status":"Finished","gameid":currGame['gameid']}
+            )
+        except sqlite3.IntegrityError as e:
+            abort(404, e)
+        return currGame,201 #should return correct answer? 
+    #if 1 then word is valid otherwise it isn't valid
+    isValidGuess = await db.fetch_one("SELECT * from valid_word where valword = :word;", values={"word":currGame["word"]})
+    print(isValidGuess)
+    if(isValidGuess is not None and len(isValidGuess) >= 1):
+        try: 
+            #insert guess word into guess table
+            print("Goes here")
+            id_guess = await db.execute("INSERT INTO guess(gameid,guessedword, accuracy) VALUES(:gameid, :guessedword, :accuracy)",values={"guessedword":currGame["word"],"gameid":currGame["gameid"],"accuracy":"None"})
+            #get current game number of guesses
+            print("id_guess",id_guess)
+            guessNum = await db.fetch_one("SELECT guesses from game where gameid = :gameid",values={"gameid":currGame["gameid"]})
+            print("guessNum",guessNum[0])
+            #update game table's guess variable by decrementing it
+            id_games = await db.execute(
+                """
+                UPDATE game set guesses = :guessNum where gameid = :gameid
+                """,values={"guessNum":(guessNum[0]+1),"gameid":currGame['gameid']}
+            )
+            print("id_game",id_games)
+            #if after updating game number of guesses reaches max guesses then mark game as finished 
+            if(guessNum[0]+1 == 6):
+                #update game status as finished
+                return currGame,202
+        except sqlite3.IntegrityError as e:
+            abort(404, e)
+    else:
+        #should return msg saying invalid word?
+        abort(404)
+    return currGame, 202
 @app.errorhandler(409)
 def conflict(e):
     return {"error": str(e)}, 409
