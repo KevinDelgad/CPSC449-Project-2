@@ -83,19 +83,20 @@ async def create_user(data):
     return user, 201
 
 # User authentication endpoint
-@app.route("/user-auth", methods=["GET"])
+@app.route("/user-auth/<string:username>/<string:password>", methods=["GET"])
 async def userAuth( username, password ):
     db = await _get_db()
-    # Selection query with placeholders
-    # Best practice to avoid SQL injections
-    select_query = "SELECT * FROM user WHERE username=%s AND passwrd=%s;"
+    # Selection query with raw queries
+    select_query = "SELECT * FROM user WHERE username= :username AND passwrd= :password"
+    values = {"username": username, "password": password}
 
     # Run the command
-    results = db.execute(select_query, ( username, password ) )
-    
+    result = await db.fetch_one( select_query, values )
+
     # Is the user registered?
-    if results.fetch_all():
-        return { "authenticated": True }, 200
+    if result:
+        return { "authenticated": "true" }, 200
+
     else:
         return 401, { "WWW-Authenticate": "Fake Realm" }
 
