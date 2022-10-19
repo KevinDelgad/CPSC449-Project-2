@@ -170,10 +170,11 @@ async def add_guess(data):
             )
         except sqlite3.IntegrityError as e:
             abort(404, e)
-        return currGame,201 #should return correct answer? 
+        return {"guessedWord":currGame["word"], "Accuracy":u'\u2713'*5},201 #should return correct answer? 
     #if 1 then word is valid otherwise it isn't valid and also check if they exceed guess limit
     isValidGuess = await db.fetch_one("SELECT * from valid_word where valword = :word;", values={"word":currGame["word"]})
     guessNum = await db.fetch_one("SELECT guesses from game where gameid = :gameid",values={"gameid":currGame["gameid"]})
+    accuracy = ""
     if(isValidGuess is not None and len(isValidGuess) >= 1 and guessNum[0] < 6):
         try: 
             #make a dict mapping each character and its position from the answer
@@ -183,10 +184,7 @@ async def add_guess(data):
                 ansDict[answord[0][i]] = i
             #compare location of guessed word with answer
             guess_word = currGame["word"]
-            accuracy = ""
             for i in range(len(guess_word)):
-                # print(guess_word[i])
-                # print(guess_word[i], guess_word[i] in ansDict)
                 if guess_word[i] in ansDict:
                     # print(ansDict.get(guess_word[i]))
                     if ansDict.get(guess_word[i]) == i:
@@ -216,8 +214,8 @@ async def add_guess(data):
             abort(404, e)
     else:
         #should return msg saying invalid word?
-        abort(404)
-    return currGame, 202
+        return{"Error":"Invalid Word"}
+    return {"guessedWord":currGame["word"], "Accuracy":accuracy},201
 
 @app.route("/games/all/<string:username>", methods=["GET"])
 async def all_games(username):
@@ -228,9 +226,10 @@ async def all_games(username):
     if userid:
 
         games_val = await db.fetch_all( "SELECT gameid, guesses FROM game as a where gameid IN (select gameid from games where userid = :userid) and a.gstate = :gstate;", values = {"userid":userid[0],"gstate":"In-progress"})
-
+        print(games_val)
+        if games_val is None or len(games_val) == 0:
+            return { "Message": "No Active Games" },406
         return dict(games_val)
-
     else:
         abort(404)
 
