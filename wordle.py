@@ -218,6 +218,37 @@ async def add_guess(data):
         #should return msg saying invalid word?
         abort(404)
     return currGame, 202
+
+@app.route("/games/all/<string:username>", methods=["GET"])
+async def all_games(username):
+    db = await _get_db()
+
+    userid = await db.fetch_one(
+            "SELECT userid FROM user WHERE username = :username", values={"username":username})
+    if userid:
+
+        games_val = await db.fetch_all( "SELECT gameid, guesses FROM game as a where gameid IN (select gameid from games where userid = :userid) and a.gstate = :gstate;", values = {"userid":userid[0],"gstate":"In-progress"})
+
+        return dict(games_val)
+
+    else:
+        abort(404)
+
+@app.route("/games/<string:username>/<int:gameid>", methods=["GET"])
+async def my_game(username,gameid):
+    db = await _get_db()
+
+    userid = await db.fetch_one(
+            "SELECT userid FROM user WHERE username = :username", values={"username":username})
+    if userid:
+
+        guess_val = await db.fetch_all( "SELECT * FROM guess WHERE gameid = :gameid", values={"gameid":gameid})
+
+        return list(map(dict,guess_val))
+
+    else:
+        abort(404)
+
 @app.errorhandler(409)
 def conflict(e):
     return {"error": str(e)}, 409
