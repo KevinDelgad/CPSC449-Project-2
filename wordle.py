@@ -219,7 +219,7 @@ async def add_guess(data):
         abort(404)
     return currGame, 202
 
-@app.route("/games/all/<string:username>", methods=["GET"])
+@app.route("/games/<string:username>/all", methods=["GET"])
 async def all_games(username):
     db = await _get_db()
 
