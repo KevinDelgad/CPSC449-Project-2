@@ -217,7 +217,7 @@ async def add_guess(data):
         return{"Error":"Invalid Word"}
     return {"guessedWord":currGame["word"], "Accuracy":accuracy},201
 
-@app.route("/games/all/<string:username>", methods=["GET"])
+@app.route("/games/<string:username>/all", methods=["GET"])
 async def all_games(username):
     db = await _get_db()
 
@@ -229,6 +229,7 @@ async def all_games(username):
         print(games_val)
         if games_val is None or len(games_val) == 0:
             return { "Message": "No Active Games" },406
+
         return dict(games_val)
     else:
         abort(404)
@@ -241,8 +242,12 @@ async def my_game(username,gameid):
             "SELECT userid FROM user WHERE username = :username", values={"username":username})
     if userid:
 
-        guess_val = await db.fetch_all( "SELECT * FROM guess WHERE gameid = :gameid", values={"gameid":gameid})
+        guess_val = await db.fetch_all( "SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gameid})
 
+        if guess_val is None or len(guess_val) == 0:
+            
+            return { "Message": "Not An Active Game" },406
+        
         return list(map(dict,guess_val))
 
     else:
