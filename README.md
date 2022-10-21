@@ -10,19 +10,19 @@ Steps to run the project:
 
 1. Initialize the database and start the API:
 
-./bin/init.sh
+   ./bin/init.sh
 
 2. Populate the data base by running the python script:
 
-dbpop.py
+   dbpop.py
 
 3. Start the API by running
 
-foreman start
+   foreman start
 
 4. Go to local.gd docs to view and test all the endpoints
 
- http://wordle.local.gd:5000/docs
+   http://wordle.local.gd:5000/docs
 
 
 
