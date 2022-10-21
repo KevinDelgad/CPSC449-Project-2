@@ -225,12 +225,13 @@ async def all_games(username):
             "SELECT userid FROM user WHERE username = :username", values={"username":username})
     if userid:
 
-        games_val = await db.fetch_all( "SELECT gameid, guesses FROM game as a where gameid IN (select gameid from games where userid = :userid) and a.gstate = :gstate;", values = {"userid":userid[0],"gstate":"In-progress"})
-        print(games_val)
+        games_val = await db.fetch_all( "SELECT * FROM game as a where gameid IN (select gameid from games where userid = :userid) and a.gstate = :gstate;", values = {"userid":userid[0],"gstate":"In-progress"})
+        
         if games_val is None or len(games_val) == 0:
             return { "Message": "No Active Games" },406
 
-        return dict(games_val)
+        return list(map(dict,games_val))
+
     else:
         abort(404)
 
