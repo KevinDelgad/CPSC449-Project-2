@@ -1,9 +1,9 @@
 # Wordle Backend Project1 : API Endpoints
 
 Group 4 team members:
-Florentino Becerra
-Himani Tawade
-Kevin Delgado
+Florentino Becerra,
+Himani Tawade,
+Kevin Delgado,
 Mohamed Habarneh
 
 Steps to run the project:
