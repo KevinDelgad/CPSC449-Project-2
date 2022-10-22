@@ -56,10 +56,13 @@ async def close_connection(exception):
 
 
 @app.route("/", methods=["GET"])
-async def test():
-    db = await _get_db()
-    all_answers = await db.fetch_all("SELECT * FROM answer;")
-    return list(map(dict, all_answers))
+def index():
+    return textwrap.dedent(
+        """
+        <h1>Welcome to Wordle 2.0!!!</h1>
+        """
+    )
+
 
 @app.route("/users/", methods=["POST"])
 @validate_request(User)
