@@ -8,3 +8,6 @@ CREATE TABLE user(
     passwrd VARCHAR(20) NOT NULL, 
     UNIQUE(username)
 );
+
+CREATE INDEX idx_user ON user(userid, username, passwrd);
+COMMIT;
