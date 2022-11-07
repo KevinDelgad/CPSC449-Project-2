@@ -1,1 +1,1 @@
-app: hypercorn wordle --reload --debug --bind wordle.local.gd:$PORT --access-logfile - --error-logfile - --log-level DEBUG
+app: hypercorn game --reload --debug --bind game.local.gd:$PORT --access-logfile - --error-logfile - --log-level DEBUG

@@ -1,6 +1,6 @@
 import sqlite3
 import json
-conn = sqlite3.connect('var/wordle.db')
+conn = sqlite3.connect('var/game.db')
 c = conn.cursor()
 
 
