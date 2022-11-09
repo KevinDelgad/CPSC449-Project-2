@@ -9,7 +9,8 @@ import textwrap
 import databases
 import toml
 
-from quart import Quart, g, request, abort
+from functools import wraps
+from quart import Quart, g, request, abort, make_response
 from quart_schema import QuartSchema, RequestSchemaValidationError, validate_request
 
 app = Quart(__name__)
@@ -71,23 +72,37 @@ async def create_user(data):
     user["id"] = id
     return user, 201
 
+
+def auth_required(f):
+    @wraps(f)
+    async def decorated(*args, **kwargs):
+        db = await _get_db()
+        auth = request.authorization
+        if auth and  auth.type == "basic" and auth.username and auth.password:
+            valid_user = db.fetch_one(
+            "SELECT username FROM user WHERE username = :username", str(auth.username)
+            )
+            if valid_user:
+                correct_password = db.fetch_one(
+                "SELECT password FROM user WHERE username = :", values={"username":str(auth.username), "password":str(auth.password)}
+                )
+                if correct_password:
+                    return await f(*args, **kwargs)
+        return await make_response(
+            "Couldn not verify!",
+            401,
+            {"WWW-Authenticate": 'Basic realm="Login required"'},
+        )
+    return decorated
+
+    
+
+
 # User authentication endpoint
-@app.route("/user-auth/<string:username>/<string:password>", methods=["GET"])
-async def userAuth( username, password ):
-    db = await _get_db()
-    # Selection query with raw queries
-    select_query = "SELECT * FROM user WHERE username= :username AND passwrd= :password"
-    values = {"username": username, "password": password}
-
-    # Run the command
-    result = await db.fetch_one( select_query, values )
-
-    # Is the user registered?
-    if result:
-        return { "authenticated": "true" }, 200
-
-    else:
-        return 401, { "WWW-Authenticate": "Fake Realm" }
+@app.route("/user-auth/", methods=["GET"])
+@auth_required
+async def userAuth():
+    return '<h1>You are logged in! </h1>'
 
 
 @app.errorhandler(409)
