@@ -1,5 +1,6 @@
 from cmath import exp
 from pydoc import doc
+from logging.config import dictConfig
 import databases
 import collections
 import dataclasses
@@ -82,10 +83,12 @@ def auth_required(f):
             valid_user = db.fetch_one(
             "SELECT username FROM user WHERE username = :username", str(auth.username)
             )
+            # app.logger.info("SELECT username FROM user WHERE username = :username, str(auth.username)")
             if valid_user:
                 correct_password = db.fetch_one(
                 "SELECT password FROM user WHERE username = :", values={"username":str(auth.username), "password":str(auth.password)}
                 )
+                # app.logger.info("""SELECT password FROM user WHERE username = :", values={"username":str(auth.username), "password":str(auth.password)}""")
                 if correct_password:
                     return await f(*args, **kwargs)
         return await make_response(
@@ -94,9 +97,6 @@ def auth_required(f):
             {"WWW-Authenticate": 'Basic realm="Login required"'},
         )
     return decorated
-
-    
-
 
 # User authentication endpoint
 @app.route("/user-auth/", methods=["GET"])

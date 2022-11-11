@@ -1,5 +1,6 @@
 from cmath import exp
 from pydoc import doc
+from logging.config import dictConfig
 import databases
 import collections
 import dataclasses
@@ -17,6 +18,14 @@ QuartSchema(app)
 
 app.config.from_file(f"./etc/{__name__}.toml", toml.load)
 
+dictConfig({
+    'version': 1,
+    'loggers': {
+        'quart.app': {
+            'level': 'ERROR',
+        },
+    },
+})
 
 @dataclasses.dataclass
 class Game:
@@ -63,14 +72,19 @@ async def create_game(data):
     word = await db.fetch_one(
         "SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1"
     )
+    # app.logger.info("SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1")
+
     # Check if the retrived word is a repeat for the user, and if so grab a new word
     while await db.fetch_one(
         "SELECT answerid FROM games WHERE username = :username AND answerid = :answerid",
         values={"username": username.get("username"),"answerid": word[0]},
     ):
+        # app.logger.info(""""SELECT answerid FROM games WHERE username = :username AND answerid = :answerid",
+        # values={"username": username.get("username"),"answerid": word[0]}""")
         word = await db.fetch_one(
             "SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1"
         )
+        # app.logger.info("SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1")
 
     # Create new game with 0 guesses
     query = "INSERT INTO game(guesses, gstate) VALUES(:guesses, :gstate)"
@@ -87,19 +101,21 @@ async def create_game(data):
 
 
 #Should validate to check if guess is in valid_word table
-#if it is then insert into guess table 
+#if it is then insert into guess table
 #update game table by decrementing guess variable
 #if word is not valid throw 404 exception
 @app.route("/guess/",methods=["POST"])
 @validate_request(Guess)
 async def add_guess(data):
-    db = await _get_db() 
+    db = await _get_db()
 
     currGame = dataclasses.asdict(data)
     #checks whether guessed word is the answer for that game
     isAnswer= await db.fetch_one(
         "SELECT * FROM answer as a where (select count(*) from games where gameid = :gameid and answerid = a.answerid)>=1 and a.answord = :word;", currGame
         )
+        # app.logger.info("""SELECT * FROM answer as a where (select count(*) from games where gameid = :gameid and answerid = a.answerid)>=1 and a.answord = :word;", currGame""")
+
     #is guessed word the answer
     if isAnswer is not None and len(isAnswer) >= 1:
         #update game status
@@ -111,15 +127,18 @@ async def add_guess(data):
             )
         except sqlite3.IntegrityError as e:
             abort(404, e)
-        return {"guessedWord":currGame["word"], "Accuracy":u'\u2713'*5},201 #should return correct answer? 
+        return {"guessedWord":currGame["word"], "Accuracy":u'\u2713'*5},201 #should return correct answer?
     #if 1 then word is valid otherwise it isn't valid and also check if they exceed guess limit
     isValidGuess = await db.fetch_one("SELECT * from valid_word where valword = :word;", values={"word":currGame["word"]})
+    # app.logger.info(""""SELECT * from valid_word where valword = :word;", values={"word":currGame["word"]}""")
     guessNum = await db.fetch_one("SELECT guesses from game where gameid = :gameid",values={"gameid":currGame["gameid"]})
+    # app.logger.info("""SELECT guesses from game where gameid = :gameid",values={"gameid":currGame["gameid"]}""")
     accuracy = ""
     if(isValidGuess is not None and len(isValidGuess) >= 1 and guessNum[0] < 6):
-        try: 
+        try:
             #make a dict mapping each character and its position from the answer
             answord = await db.fetch_one("SELECT answord FROM answer as a, games as g  where g.gameid = :gameid and g.answerid = a.answerid",values={"gameid":currGame["gameid"]})
+            # app.logger.info(""""SELECT answord FROM answer as a, games as g  where g.gameid = :gameid and g.answerid = a.answerid",values={"gameid":currGame["gameid"]}""")
             ansDict = {}
             for i in range(len(answord[0])):
                 ansDict[answord[0][i]] = i
@@ -142,7 +161,7 @@ async def add_guess(data):
                 UPDATE game set guesses = :guessNum where gameid = :gameid
                 """,values={"guessNum":(guessNum[0]+1),"gameid":currGame['gameid']}
             )
-            #if after updating game number of guesses reaches max guesses then mark game as finished 
+            #if after updating game number of guesses reaches max guesses then mark game as finished
             if(guessNum[0]+1 >= 6):
                 #update game status as finished
                 id_games = await db.execute(
@@ -162,7 +181,8 @@ async def add_guess(data):
 async def all_games(username):
     db = await _get_db()
     games_val = await db.fetch_all( "SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":username,"gstate":"In-progress"})
-    
+    # app.logger.info(""""SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":username,"gstate":"In-progress"}""")
+
     if games_val is None or len(games_val) == 0:
         return { "Message": "No Active Games" },406
 
@@ -173,11 +193,12 @@ async def my_game(username,gameid):
     db = await _get_db()
 
     guess_val = await db.fetch_all( "SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gameid})
+    # app.logger.info(""""SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gameid}""")
 
     if guess_val is None or len(guess_val) == 0:
-        
+
         return { "Message": "Not An Active Game" },406
-    
+
     return list(map(dict,guess_val))
 
 @app.errorhandler(409)
