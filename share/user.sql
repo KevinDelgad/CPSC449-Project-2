@@ -10,4 +10,7 @@ CREATE TABLE user(
 );
 
 CREATE INDEX idx_user ON user(userid, username, passwrd);
+SEARCH TABLE user USING COVERING INDEX sqlite_autoindex_user_1 (username=?);
+SEARCH TABLE user USING INDEX sqlite_autoindex_user_1 (username=?);
+
 COMMIT;

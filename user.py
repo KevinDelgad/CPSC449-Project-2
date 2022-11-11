@@ -88,7 +88,7 @@ def auth_required(f):
                 correct_password = db.fetch_one(
                 "SELECT password FROM user WHERE username = :", values={"username":str(auth.username), "password":str(auth.password)}
                 )
-                # app.logger.info("""SELECT password FROM user WHERE username = :", values={"username":str(auth.username), "password":str(auth.password)}""")
+                # app.logger.info("""SELECT passwrd FROM user WHERE username = :", values={"username":str(auth.username), "password":str(auth.passwrd)}""")
                 if correct_password:
                     return await f(*args, **kwargs)
         return await make_response(
