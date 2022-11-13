@@ -74,36 +74,47 @@ async def create_user(data):
     return user, 201
 
 
-def auth_required(f):
-    @wraps(f)
-    async def decorated(*args, **kwargs):
-        db = await _get_db()
-        auth = request.authorization
-        if auth and  auth.type == "basic" and auth.username and auth.password:
-            valid_user = db.fetch_one(
-            "SELECT username FROM user WHERE username = :username", str(auth.username)
-            )
-            # app.logger.info("SELECT username FROM user WHERE username = :username, str(auth.username)")
-            if valid_user:
-                correct_password = db.fetch_one(
-                "SELECT password FROM user WHERE username = :", values={"username":str(auth.username), "password":str(auth.password)}
-                )
-                # app.logger.info("""SELECT passwrd FROM user WHERE username = :", values={"username":str(auth.username), "password":str(auth.passwrd)}""")
-                if correct_password:
-                    return await f(*args, **kwargs)
-        return await make_response(
-            "Couldn not verify!",
-            401,
-            {"WWW-Authenticate": 'Basic realm="Login required"'},
-        )
-    return decorated
-
 # User authentication endpoint
 @app.route("/user-auth/", methods=["GET"])
-@auth_required
 async def userAuth():
-    return '<h1>You are logged in! </h1>'
+    validRequest = False
+    query_parameters = request.args
+    testing = request.headers["X-Original-URI"]
+    input = {}
+    key = ""
+    value = ""
+    switch = False
+    for elems in testing:
+        if elems == "/" or elems == "?":
+            continue
 
+        if elems == "=":
+            switch = True
+            continue
+
+        if switch == False:
+            key+=elems
+        else:
+            value+=elems
+    
+    input[key] = value
+    app.logger.info(testing)
+    app.logger.info(input)
+    db = await _get_db()
+    # Selection query with raw queries
+
+    if input:
+        result = await db.fetch_one(
+        "SELECT * FROM user WHERE username= :username",
+        values = {"username":input["Username"]}
+        )
+        validRequest = True
+    # Is the user registered?
+    app.logger.info(result)
+    if validRequest:
+        if result:
+            return { "authenticated": "true" }, 200
+    return { "WWW-Authenticate": "Fake Realm" }, 401
 
 @app.errorhandler(409)
 def conflict(e):
