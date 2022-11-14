@@ -77,44 +77,21 @@ async def create_user(data):
 # User authentication endpoint
 @app.route("/user-auth/", methods=["GET"])
 async def userAuth():
-    validRequest = False
-    query_parameters = request.args
-    testing = request.headers["X-Original-URI"]
-    input = {}
-    key = ""
-    value = ""
-    switch = False
-    for elems in testing:
-        if elems == "/" or elems == "?":
-            continue
-
-        if elems == "=":
-            switch = True
-            continue
-
-        if switch == False:
-            key+=elems
-        else:
-            value+=elems
-    
-    input[key] = value
-    app.logger.info(testing)
-    app.logger.info(input)
+    auth = request.authorization
     db = await _get_db()
     # Selection query with raw queries
+    select_query = "SELECT * FROM user WHERE username= :username AND passwrd= :password"
+    values = {"username": auth["username"], "password": auth["password"]}
 
-    if input:
-        result = await db.fetch_one(
-        "SELECT * FROM user WHERE username= :username",
-        values = {"username":input["Username"]}
-        )
-        validRequest = True
+    # Run the command
+    result = await db.fetch_one( select_query, values )
+
     # Is the user registered?
-    app.logger.info(result)
-    if validRequest:
-        if result:
-            return { "authenticated": "true" }, 200
-    return { "WWW-Authenticate": "Fake Realm" }, 401
+    if result:
+        return { "authenticated": "true" }, 200
+
+    else:
+        return { "WWW-Authenticate": "Fake Realm" }, 401
 
 @app.errorhandler(409)
 def conflict(e):
