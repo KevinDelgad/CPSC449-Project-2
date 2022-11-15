@@ -66,37 +66,40 @@ def index():
 @app.route("/games/", methods=["POST"])
 @validate_request(Game)
 async def create_game(data):
+    auth = request.authorization
     db = await _get_db()
     username = dataclasses.asdict(data)
-    # Retrive random ID from the answers table
-    word = await db.fetch_one(
-        "SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1"
-    )
-    # app.logger.info("SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1")
-
-    # Check if the retrived word is a repeat for the user, and if so grab a new word
-    while await db.fetch_one(
-        "SELECT answerid FROM games WHERE username = :username AND answerid = :answerid",
-        values={"username": username.get("username"),"answerid": word[0]},
-    ):
-        # app.logger.info(""""SELECT answerid FROM games WHERE username = :username AND answerid = :answerid",
-        # values={"username": username.get("username"),"answerid": word[0]}""")
+    if auth["username"] == username.get("username"):
+        # Retrive random ID from the answers table
         word = await db.fetch_one(
             "SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1"
         )
         # app.logger.info("SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1")
 
-    # Create new game with 0 guesses
-    query = "INSERT INTO game(guesses, gstate) VALUES(:guesses, :gstate)"
-    values = {"guesses": 0, "gstate": "In-progress"}
-    cur = await db.execute(query=query, values=values)
+        # Check if the retrived word is a repeat for the user, and if so grab a new word
+        while await db.fetch_one(
+            "SELECT answerid FROM games WHERE username = :username AND answerid = :answerid",
+            values={"username": username.get("username"),"answerid": word[0]},
+        ):
+            # app.logger.info(""""SELECT answerid FROM games WHERE username = :username AND answerid = :answerid",
+            # values={"username": username.get("username"),"answerid": word[0]}""")
+            word = await db.fetch_one(
+                "SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1"
+            )
+            # app.logger.info("SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1")
 
-    # Create new row into Games table which connect with the recently connected game
-    query = "INSERT INTO games(username, answerid, gameid) VALUES(:username, :answerid, :gameid)"
-    values = {"username": username.get("username"), "answerid": word[0], "gameid": cur}
-    cur = await db.execute(query=query, values=values)
+        # Create new game with 0 guesses
+        query = "INSERT INTO game(guesses, gstate) VALUES(:guesses, :gstate)"
+        values = {"guesses": 0, "gstate": "In-progress"}
+        cur = await db.execute(query=query, values=values)
 
-    return values, 201
+        # Create new row into Games table which connect with the recently connected game
+        query = "INSERT INTO games(username, answerid, gameid) VALUES(:username, :answerid, :gameid)"
+        values = {"username": username.get("username"), "answerid": word[0], "gameid": cur}
+        cur = await db.execute(query=query, values=values)
+
+        return values, 201
+    return { "WWW-Authenticate": "Fake Realm" }, 401
 
 
 
@@ -108,74 +111,78 @@ async def create_game(data):
 @validate_request(Guess)
 async def add_guess(data):
     db = await _get_db()
-
+    auth = request.authorization
     currGame = dataclasses.asdict(data)
-    #checks whether guessed word is the answer for that game
-    isAnswer= await db.fetch_one(
-        "SELECT * FROM answer as a where (select count(*) from games where gameid = :gameid and answerid = a.answerid)>=1 and a.answord = :word;", currGame
-        )
-        # app.logger.info("""SELECT * FROM answer as a where (select count(*) from games where gameid = :gameid and answerid = a.answerid)>=1 and a.answord = :word;", currGame""")
+    validGame = await db.fetch_one("SELECT * from games WHERE username = :username AND gameid = :gameid ;", values = {"username": auth["username"], "gameid": currGame.get("gameid") })
+    app.logger.info(validGame)
+    if validGame:
+        #checks whether guessed word is the answer for that game
+        isAnswer= await db.fetch_one(
+            "SELECT * FROM answer as a where (select count(*) from games where gameid = :gameid and answerid = a.answerid)>=1 and a.answord = :word;", currGame
+            )
+            # app.logger.info("""SELECT * FROM answer as a where (select count(*) from games where gameid = :gameid and answerid = a.answerid)>=1 and a.answord = :word;", currGame""")
 
-    #is guessed word the answer
-    if isAnswer is not None and len(isAnswer) >= 1:
-        #update game status
-        try:
-            id_games = await db.execute(
-                """
-                UPDATE game set gstate = :status where gameid = :gameid
-                """,values={"status":"Finished","gameid":currGame['gameid']}
-            )
-        except sqlite3.IntegrityError as e:
-            abort(404, e)
-        return {"guessedWord":currGame["word"], "Accuracy":u'\u2713'*5},201 #should return correct answer?
-    #if 1 then word is valid otherwise it isn't valid and also check if they exceed guess limit
-    isValidGuess = await db.fetch_one("SELECT * from valid_word where valword = :word;", values={"word":currGame["word"]})
-    # app.logger.info(""""SELECT * from valid_word where valword = :word;", values={"word":currGame["word"]}""")
-    guessNum = await db.fetch_one("SELECT guesses from game where gameid = :gameid",values={"gameid":currGame["gameid"]})
-    # app.logger.info("""SELECT guesses from game where gameid = :gameid",values={"gameid":currGame["gameid"]}""")
-    accuracy = ""
-    if(isValidGuess is not None and len(isValidGuess) >= 1 and guessNum[0] < 6):
-        try:
-            #make a dict mapping each character and its position from the answer
-            answord = await db.fetch_one("SELECT answord FROM answer as a, games as g  where g.gameid = :gameid and g.answerid = a.answerid",values={"gameid":currGame["gameid"]})
-            # app.logger.info(""""SELECT answord FROM answer as a, games as g  where g.gameid = :gameid and g.answerid = a.answerid",values={"gameid":currGame["gameid"]}""")
-            ansDict = {}
-            for i in range(len(answord[0])):
-                ansDict[answord[0][i]] = i
-            #compare location of guessed word with answer
-            guess_word = currGame["word"]
-            for i in range(len(guess_word)):
-                if guess_word[i] in ansDict:
-                    # print(ansDict.get(guess_word[i]))
-                    if ansDict.get(guess_word[i]) == i:
-                        accuracy += u'\u2713'
-                    else:
-                        accuracy += 'O'
-                else:
-                    accuracy += 'X'
-            #insert guess word into guess table with accruracy
-            id_guess = await db.execute("INSERT INTO guess(gameid,guessedword, accuracy) VALUES(:gameid, :guessedword, :accuracy)",values={"guessedword":currGame["word"],"gameid":currGame["gameid"],"accuracy":accuracy})
-            #update game table's guess variable by decrementing it
-            id_games = await db.execute(
-                """
-                UPDATE game set guesses = :guessNum where gameid = :gameid
-                """,values={"guessNum":(guessNum[0]+1),"gameid":currGame['gameid']}
-            )
-            #if after updating game number of guesses reaches max guesses then mark game as finished
-            if(guessNum[0]+1 >= 6):
-                #update game status as finished
+        #is guessed word the answer
+        if isAnswer is not None and len(isAnswer) >= 1:
+            #update game status
+            try:
                 id_games = await db.execute(
                     """
                     UPDATE game set gstate = :status where gameid = :gameid
                     """,values={"status":"Finished","gameid":currGame['gameid']}
                 )
-                return currGame,202
-        except sqlite3.IntegrityError as e:
-            abort(404, e)
-    else:
-        #should return msg saying invalid word?
-        return{"Error":"Invalid Word"}
-    return {"guessedWord":currGame["word"], "Accuracy":accuracy},201
+            except sqlite3.IntegrityError as e:
+                abort(404, e)
+            return {"guessedWord":currGame["word"], "Accuracy":u'\u2713'*5},201 #should return correct answer?
+        #if 1 then word is valid otherwise it isn't valid and also check if they exceed guess limit
+        isValidGuess = await db.fetch_one("SELECT * from valid_word where valword = :word;", values={"word":currGame["word"]})
+        # app.logger.info(""""SELECT * from valid_word where valword = :word;", values={"word":currGame["word"]}""")
+        guessNum = await db.fetch_one("SELECT guesses from game where gameid = :gameid",values={"gameid":currGame["gameid"]})
+        # app.logger.info("""SELECT guesses from game where gameid = :gameid",values={"gameid":currGame["gameid"]}""")
+        accuracy = ""
+        if(isValidGuess is not None and len(isValidGuess) >= 1 and guessNum[0] < 6):
+            try:
+                #make a dict mapping each character and its position from the answer
+                answord = await db.fetch_one("SELECT answord FROM answer as a, games as g  where g.gameid = :gameid and g.answerid = a.answerid",values={"gameid":currGame["gameid"]})
+                # app.logger.info(""""SELECT answord FROM answer as a, games as g  where g.gameid = :gameid and g.answerid = a.answerid",values={"gameid":currGame["gameid"]}""")
+                ansDict = {}
+                for i in range(len(answord[0])):
+                    ansDict[answord[0][i]] = i
+                #compare location of guessed word with answer
+                guess_word = currGame["word"]
+                for i in range(len(guess_word)):
+                    if guess_word[i] in ansDict:
+                        # print(ansDict.get(guess_word[i]))
+                        if ansDict.get(guess_word[i]) == i:
+                            accuracy += u'\u2713'
+                        else:
+                            accuracy += 'O'
+                    else:
+                        accuracy += 'X'
+                #insert guess word into guess table with accruracy
+                id_guess = await db.execute("INSERT INTO guess(gameid,guessedword, accuracy) VALUES(:gameid, :guessedword, :accuracy)",values={"guessedword":currGame["word"],"gameid":currGame["gameid"],"accuracy":accuracy})
+                #update game table's guess variable by decrementing it
+                id_games = await db.execute(
+                    """
+                    UPDATE game set guesses = :guessNum where gameid = :gameid
+                    """,values={"guessNum":(guessNum[0]+1),"gameid":currGame['gameid']}
+                )
+                #if after updating game number of guesses reaches max guesses then mark game as finished
+                if(guessNum[0]+1 >= 6):
+                    #update game status as finished
+                    id_games = await db.execute(
+                        """
+                        UPDATE game set gstate = :status where gameid = :gameid
+                        """,values={"status":"Finished","gameid":currGame['gameid']}
+                    )
+                    return currGame,202
+            except sqlite3.IntegrityError as e:
+                abort(404, e)
+        else:
+            #should return msg saying invalid word?
+            return{"Error":"Invalid Word"}
+        return {"guessedWord":currGame["word"], "Accuracy":accuracy},201
+    return { "WWW-Authenticate": "Fake Realm" }, 401
 
 @app.route("/games/<string:username>/all", methods=["GET"])
 async def all_games(username):

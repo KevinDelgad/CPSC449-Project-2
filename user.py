@@ -89,7 +89,6 @@ async def userAuth():
     # Is the user registered?
     if result:
         return { "authenticated": "true" }, 200
-
     else:
         return { "WWW-Authenticate": "Fake Realm" }, 401
 
