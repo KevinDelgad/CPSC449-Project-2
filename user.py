@@ -6,16 +6,18 @@ import collections
 import dataclasses
 import sqlite3
 import textwrap
-
+import requests
 import databases
 import toml
 
 from functools import wraps
 from quart import Quart, g, request, abort, make_response
 from quart_schema import QuartSchema, RequestSchemaValidationError, validate_request
+# from quart_auth import basic_auth_required
 
 app = Quart(__name__)
 QuartSchema(app)
+# AuthManager(app)
 
 app.config.from_file(f"./etc/{__name__}.toml", toml.load)
 
@@ -66,19 +68,20 @@ async def create_user(data):
             """,
             user,
         )
-    #Return 409 error if username is already in table
+    # Return 409 error if username is already in table
     except sqlite3.IntegrityError as e:
         abort(409, e)
 
     user["id"] = id
     return user, 201
 
-
 # User authentication endpoint
 @app.route("/user-auth/", methods=["GET"])
 async def userAuth():
     auth = request.authorization
     db = await _get_db()
+    if auth == None:
+        return { "WWW-Authenticate": 'Basic realm="Login Required"' }, 401
     # Selection query with raw queries
     select_query = "SELECT * FROM user WHERE username= :username AND passwrd= :password"
     values = {"username": auth["username"], "password": auth["password"]}
@@ -90,7 +93,7 @@ async def userAuth():
     if result:
         return { "authenticated": "true" }, 200
     else:
-        return { "WWW-Authenticate": "Fake Realm" }, 401
+        return { "WWW-Authenticate": 'Basic realm="Login Required"' }, 401
 
 @app.errorhandler(409)
 def conflict(e):

@@ -184,10 +184,13 @@ async def add_guess(data):
         return {"guessedWord":currGame["word"], "Accuracy":accuracy},201
     return { "WWW-Authenticate": "Fake Realm" }, 401
 
-@app.route("/games/<string:username>/all", methods=["GET"])
-async def all_games(username):
+@app.route("/games/all", methods=["GET"])
+async def all_games():
     db = await _get_db()
-    games_val = await db.fetch_all( "SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":username,"gstate":"In-progress"})
+    auth = request.authorization
+    if auth == None:
+        return { "WWW-Authenticate": 'Basic realm="Login Required"' }, 401
+    games_val = await db.fetch_all( "SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":auth["username"],"gstate":"In-progress"})
     # app.logger.info(""""SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":username,"gstate":"In-progress"}""")
 
     if games_val is None or len(games_val) == 0:
@@ -198,7 +201,9 @@ async def all_games(username):
 @app.route("/games/<string:username>/<int:gameid>", methods=["GET"])
 async def my_game(username,gameid):
     db = await _get_db()
-
+    auth = request.authorization
+    if auth == None:
+        return { "WWW-Authenticate": 'Basic realm="Login Required"' }, 401
     guess_val = await db.fetch_all( "SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gameid})
     # app.logger.info(""""SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gameid}""")
 
