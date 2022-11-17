@@ -6,7 +6,11 @@ server {
 
 	location / {
 		auth_request /auth;
-       	}
+  }
+
+	location /new-user/ {
+		proxy_pass http://127.0.0.1/users/;
+	}
 
 	location /new-game/ {
 		auth_request /auth;

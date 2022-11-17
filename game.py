@@ -6,6 +6,7 @@ import collections
 import dataclasses
 import sqlite3
 import textwrap
+import uuid
 
 import databases
 import toml
@@ -27,9 +28,9 @@ dictConfig({
     },
 })
 
-@dataclasses.dataclass
-class Game:
-    username: str
+# @dataclasses.dataclass
+# class Game:
+#     username: str
 
 @dataclasses.dataclass
 class Guess:
@@ -64,12 +65,12 @@ def index():
     )
 
 @app.route("/games/", methods=["POST"])
-@validate_request(Game)
+# @validate_request(Game)
 async def create_game(data):
     auth = request.authorization
     db = await _get_db()
-    username = dataclasses.asdict(data)
-    if auth["username"] == username.get("username"):
+    # username = dataclasses.asdict(data)
+    if auth["username"]:
         # Retrive random ID from the answers table
         word = await db.fetch_one(
             "SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1"
@@ -79,10 +80,10 @@ async def create_game(data):
         # Check if the retrived word is a repeat for the user, and if so grab a new word
         while await db.fetch_one(
             "SELECT answerid FROM games WHERE username = :username AND answerid = :answerid",
-            values={"username": username.get("username"),"answerid": word[0]},
+            values={"username": auth["username"],"answerid": word[0]},
         ):
             # app.logger.info(""""SELECT answerid FROM games WHERE username = :username AND answerid = :answerid",
-            # values={"username": username.get("username"),"answerid": word[0]}""")
+            # values={"username": auth["username"],"answerid": word[0]}""")
             word = await db.fetch_one(
                 "SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1"
             )
@@ -95,10 +96,11 @@ async def create_game(data):
 
         # Create new row into Games table which connect with the recently connected game
         query = "INSERT INTO games(username, answerid, gameid) VALUES(:username, :answerid, :gameid)"
-        values = {"username": username.get("username"), "answerid": word[0], "gameid": cur}
+        values = {"username": auth["username"], "answerid": word[0], "gameid": uuid.uuid4()}
         cur = await db.execute(query=query, values=values)
 
         return values, 201
+    # IDK if we need this since the user-auth does this
     return { "WWW-Authenticate": "Fake Realm" }, 401
 
 
@@ -212,8 +214,8 @@ async def my_game():
     gamesid = request.args
     valid = await db.fetch_one("SELECT gameid FROM games where username = :username and gameid = :gameid;", values = {"username":auth["username"],"gameid":gamesid[ID_PARAM[0].name]})
     app.logger.info(valid)
-    if valid is None: 
-        return { "Message": "Not Valid Id for this user!" },406        
+    if valid is None:
+        return { "Message": "Not Valid Id for this user!" },406
     if request.args.get(ID_PARAM[0].name):
         guess_val = await db.fetch_all( "SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gamesid[ID_PARAM[0].name]})
         # app.logger.info(""""SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gameid}""")
@@ -225,7 +227,7 @@ async def my_game():
         return list(map(dict,guess_val))
     else:
         return { "Message": "Not A Valid Id" },406
-        
+
 
 @app.errorhandler(409)
 def conflict(e):

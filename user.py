@@ -75,6 +75,11 @@ async def create_user(data):
     user["id"] = id
     return user, 201
 
+# Pop up box
+@app.route("/login", methods=["GET"])
+async def login():
+    return {"Error": "User not verified"}, 401, {'WWW-Authenticate': 'Basic realm = "Login required"'}
+
 # User authentication endpoint
 @app.route("/user-auth/", methods=["GET"])
 async def userAuth():
