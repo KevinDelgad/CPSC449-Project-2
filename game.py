@@ -188,9 +188,7 @@ async def add_guess(data):
 async def all_games():
     db = await _get_db()
     auth = request.authorization
-    if auth == None:
-        return { "WWW-Authenticate": 'Basic realm="Login Required"' }, 401
-    games_val = await db.fetch_all( "SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":auth["username"],"gstate":"In-progress"})
+    games_val = await db.fetch_all( "SELECT  FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":auth["username"],"gstate":"In-progress"})
     # app.logger.info(""""SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":username,"gstate":"In-progress"}""")
 
     if games_val is None or len(games_val) == 0:
@@ -198,20 +196,36 @@ async def all_games():
 
     return list(map(dict,games_val))
 
-@app.route("/games/<string:username>/<int:gameid>", methods=["GET"])
-async def my_game(username,gameid):
+SearchParam = collections.namedtuple("SearchParam", ["name", "operator"])
+
+ID_PARAM = [
+    SearchParam(
+        "id",
+        "=",
+    ),
+]
+
+@app.route("/games/id", methods=["GET"])
+async def my_game():
     db = await _get_db()
     auth = request.authorization
-    if auth == None:
-        return { "WWW-Authenticate": 'Basic realm="Login Required"' }, 401
-    guess_val = await db.fetch_all( "SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gameid})
-    # app.logger.info(""""SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gameid}""")
+    gamesid = request.args
+    valid = await db.fetch_one("SELECT gameid FROM games where username = :username and gameid = :gameid;", values = {"username":auth["username"],"gameid":gamesid[ID_PARAM[0].name]})
+    app.logger.info(valid)
+    if valid is None: 
+        return { "Message": "Not Valid Id for this user!" },406        
+    if request.args.get(ID_PARAM[0].name):
+        guess_val = await db.fetch_all( "SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gamesid[ID_PARAM[0].name]})
+        # app.logger.info(""""SELECT a.*, b.guesses, b.gstate FROM guess as a, game as b WHERE a.gameid = b.gameid and a.gameid = :gameid", values={"gameid":gameid}""")
 
-    if guess_val is None or len(guess_val) == 0:
+        if guess_val is None or len(guess_val) == 0:
 
-        return { "Message": "Not An Active Game" },406
+            return { "Message": "Not An Active Game" },406
 
-    return list(map(dict,guess_val))
+        return list(map(dict,guess_val))
+    else:
+        return { "Message": "Not A Valid Id" },406
+        
 
 @app.errorhandler(409)
 def conflict(e):
