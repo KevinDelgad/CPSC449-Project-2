@@ -90,15 +90,17 @@ async def create_game():
             # app.logger.info("SELECT answerid FROM answer ORDER BY RANDOM() LIMIT 1")
 
         # Create new game with 0 guesses
-        query = "INSERT INTO game(guesses, gstate) VALUES(:guesses, :gstate)"
-        values = {"guesses": 0, "gstate": "In-progress"}
+        singleuid = str(uuid.uuid4())
+
+        query = "INSERT INTO game(gameid, guesses, gstate) VALUES(:gameid, :guesses, :gstate)"
+        values = {"gameid": singleuid,"guesses": 0, "gstate": "In-progress"}
+        app.logger.info(values)
         cur = await db.execute(query=query, values=values)
 
-        id = uuid.uuid4()
-        print("uuid: ", id)
+        multipleuid = str(uuid.uuid4())
         # Create new row into Games table which connect with the recently connected game
-        query = "INSERT INTO games(username, answerid, gameid) VALUES(:username, :answerid, :gameid)"
-        values = {"username": auth["username"], "answerid": word[0], "gameid": id}
+        query = "INSERT INTO games(username, answerid, gameid, gamesid) VALUES(:username, :answerid, :gameid, :gamesid)"
+        values = {"username": auth["username"], "answerid": word[0], "gameid": singleuid, "gamesid": multipleuid}
         cur = await db.execute(query=query, values=values)
 
         return values, 201
