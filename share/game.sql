@@ -5,7 +5,7 @@ CREATE TABLE games (
     gamesid INTEGER PRIMARY KEY,
     username INTEGER,
     answerid INTEGER,
-    gameid INTEGER,
+    gameid UUID,
     FOREIGN KEY (answerid) REFERENCES answer(answerid),
     FOREIGN KEY(gameid) REFERENCES game(gameid)
 );
@@ -14,14 +14,14 @@ CREATE INDEX idx_user_games
 ON games (username, gameid);
 
 CREATE TABLE game(
-    gameid INTEGER PRIMARY KEY,
+    gameid UUID PRIMARY KEY,
     guesses INTEGER,
     gstate VARCHAR(12)
 );
 
 CREATE TABLE guess(
     guessid INTEGER PRIMARY KEY AUTOINCREMENT,
-    gameid INTEGER,
+    gameid UUID,
     guessedword VARCHAR(5),
     accuracy VARCHAR(5),
     FOREIGN KEY(gameid) REFERENCES game(gameid)
