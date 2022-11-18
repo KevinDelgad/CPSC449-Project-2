@@ -190,7 +190,7 @@ async def add_guess(data):
 async def all_games():
     db = await _get_db()
     auth = request.authorization
-    games_val = await db.fetch_all( "SELECT  FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":auth["username"],"gstate":"In-progress"})
+    games_val = await db.fetch_all( "SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":auth["username"],"gstate":"In-progress"})
     # app.logger.info(""""SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":username,"gstate":"In-progress"}""")
 
     if games_val is None or len(games_val) == 0:
@@ -222,7 +222,7 @@ async def my_game():
 
         if guess_val is None or len(guess_val) == 0:
 
-            return { "Message": "Not An Active Game" },406
+            return { "Message": "No guesses made" },406
 
         return list(map(dict,guess_val))
     else:
