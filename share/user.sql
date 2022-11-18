@@ -1,11 +1,10 @@
 PRAGMA foreign_KEYs=ON;
 BEGIN TRANSACTION;
 CREATE TABLE user( 
-    userid INTEGER PRIMARY KEY AUTOINCREMENT, 
-    fname TEXT NOT NULL, 
+    username VARCHAR(25) PRIMARY KEY NOT NULL, 
+    passwrd VARCHAR(20) NOT NULL,
+    fname TEXT NOT NULL,
     lname TEXT NOT NULL,
-    username VARCHAR(25) NOT NULL, 
-    passwrd VARCHAR(20) NOT NULL, 
     UNIQUE(username)
 );
 
