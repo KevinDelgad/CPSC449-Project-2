@@ -64,9 +64,9 @@ def index():
         """
     )
 
-@app.route("/games/", methods=["POST"])
+@app.route("/games/", methods=["GET"])
 # @validate_request(Game)
-async def create_game(data):
+async def create_game():
     auth = request.authorization
     db = await _get_db()
     # username = dataclasses.asdict(data)
@@ -80,7 +80,7 @@ async def create_game(data):
         # Check if the retrived word is a repeat for the user, and if so grab a new word
         while await db.fetch_one(
             "SELECT answerid FROM games WHERE username = :username AND answerid = :answerid",
-            values={"username": auth["username"],"answerid": word[0]},
+            values={"username" : auth["username"],"answerid" : word[0]},
         ):
             # app.logger.info(""""SELECT answerid FROM games WHERE username = :username AND answerid = :answerid",
             # values={"username": auth["username"],"answerid": word[0]}""")
@@ -94,9 +94,11 @@ async def create_game(data):
         values = {"guesses": 0, "gstate": "In-progress"}
         cur = await db.execute(query=query, values=values)
 
+        id = uuid.uuid4()
+        print("uuid: ", id)
         # Create new row into Games table which connect with the recently connected game
         query = "INSERT INTO games(username, answerid, gameid) VALUES(:username, :answerid, :gameid)"
-        values = {"username": auth["username"], "answerid": word[0], "gameid": uuid.uuid4()}
+        values = {"username": auth["username"], "answerid": word[0], "gameid": id}
         cur = await db.execute(query=query, values=values)
 
         return values, 201

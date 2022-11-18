@@ -15,7 +15,7 @@ server {
   }
 
 	location /new-user/ {
-		proxy_pass http://127.0.0.1/users/;
+		proxy_pass http://127.0.0.1:5000/users/;
 	}
 
 	location /new-game/ {
@@ -42,7 +42,7 @@ server {
 		proxy_pass http://backend/games/id;
 	}
 
-       	location = /auth {
+  location = /auth {
 		internal;
 		proxy_set_header X-Original-URI $request_uri;
 		proxy_pass_request_body off;

@@ -76,9 +76,9 @@ async def create_user(data):
     return user, 201
 
 # Pop up box
-@app.route("/login", methods=["GET"])
-async def login():
-    return {"Error": "User not verified"}, 401, {'WWW-Authenticate': 'Basic realm = "Login required"'}
+# @app.route("/login", methods=["GET"])
+# async def login():
+#     return {"Error": "User not verified"}, 401, {'WWW-Authenticate': 'Basic realm = "Login required"'}
 
 # User authentication endpoint
 @app.route("/user-auth/", methods=["GET"])
@@ -86,7 +86,7 @@ async def userAuth():
     auth = request.authorization
     db = await _get_db()
     if auth == None:
-        return { "WWW-Authenticate": 'Basic realm="Login Required"' }, 401
+        return {"Error": "Login Required"}, 401
     # Selection query with raw queries
     select_query = "SELECT * FROM user WHERE username= :username AND passwrd= :password"
     values = {"username": auth["username"], "password": auth["password"]}
@@ -96,9 +96,9 @@ async def userAuth():
 
     # Is the user registered?
     if result:
-        return { "authenticated": "true" }, 200
+        return { "Authenticated": "True" }, 200
     else:
-        return { "WWW-Authenticate": 'Basic realm="Login Required"' }, 401
+        return  { "Error: User not found" }, 401
 
 @app.errorhandler(409)
 def conflict(e):
