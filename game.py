@@ -34,7 +34,7 @@ dictConfig({
 
 @dataclasses.dataclass
 class Guess:
-    gameid: int
+    gameid: str
     word: str
 
 async def _connect_db():
@@ -64,7 +64,7 @@ def index():
         """
     )
 
-@app.route("/games/", methods=["GET"])
+@app.route("/games/", methods=["POST"])
 # @validate_request(Game)
 async def create_game():
     auth = request.authorization
@@ -141,11 +141,17 @@ async def add_guess(data):
             return {"guessedWord":currGame["word"], "Accuracy":u'\u2713'*5},201 #should return correct answer?
         #if 1 then word is valid otherwise it isn't valid and also check if they exceed guess limit
         isValidGuess = await db.fetch_one("SELECT * from valid_word where valword = :word;", values={"word":currGame["word"]})
+        isAlsoValidGuess = await db.fetch_one("SELECT * from answer where answord = :word;", values={"word":currGame["word"]})
+
         # app.logger.info(""""SELECT * from valid_word where valword = :word;", values={"word":currGame["word"]}""")
         guessNum = await db.fetch_one("SELECT guesses from game where gameid = :gameid",values={"gameid":currGame["gameid"]})
         # app.logger.info("""SELECT guesses from game where gameid = :gameid",values={"gameid":currGame["gameid"]}""")
         accuracy = ""
-        if(isValidGuess is not None and len(isValidGuess) >= 1 and guessNum[0] < 6):
+        if(
+            (isValidGuess is not None and len(isValidGuess) >= 1)
+            or (isAlsoValidGuess is not None and len(isAlsoValidGuess) >= 1)
+            and guessNum[0] < 6
+        ):
             try:
                 #make a dict mapping each character and its position from the answer
                 answord = await db.fetch_one("SELECT answord FROM answer as a, games as g  where g.gameid = :gameid and g.answerid = a.answerid",values={"gameid":currGame["gameid"]})
