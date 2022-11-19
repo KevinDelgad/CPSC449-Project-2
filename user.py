@@ -84,6 +84,7 @@ async def create_user(data):
 @app.route("/user-auth/", methods=["GET"])
 async def userAuth():
     auth = request.authorization
+    print("auth: ", auth)
     db = await _get_db()
     if auth == None:
         return {"Error": "Login Required"}, 401
@@ -96,8 +97,10 @@ async def userAuth():
 
     # Is the user registered?
     if result:
+        print("Authorized")
         return { "Authenticated": "True" }, 200
     else:
+        print("Not Authorized")
         return  { "Error: User not found" }, 401
 
 @app.errorhandler(409)

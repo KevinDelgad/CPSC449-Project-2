@@ -97,10 +97,9 @@ async def create_game():
         app.logger.info(values)
         cur = await db.execute(query=query, values=values)
 
-        multipleuid = str(uuid.uuid4())
         # Create new row into Games table which connect with the recently connected game
-        query = "INSERT INTO games(username, answerid, gameid, gamesid) VALUES(:username, :answerid, :gameid, :gamesid)"
-        values = {"username": auth["username"], "answerid": word[0], "gameid": singleuid, "gamesid": multipleuid}
+        query = "INSERT INTO games(username, answerid, gameid) VALUES(:username, :answerid, :gameid)"
+        values = {"username": auth["username"], "answerid": word[0], "gameid": singleuid}
         cur = await db.execute(query=query, values=values)
 
         return values, 201
