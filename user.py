@@ -97,10 +97,8 @@ async def userAuth():
 
     # Is the user registered?
     if result:
-        print("Authorized")
         return { "Authenticated": "True" }, 200
     else:
-        print("Not Authorized")
         return  { "Error: User not found" }, 401
 
 @app.errorhandler(409)
