@@ -1,0 +1,14 @@
+mount-dir: 'var/secondaryTwo/mount'
+
+data-dir: 'var/secondaryTwo/data'
+
+http:
+  # Specifies the bind address of the HTTP API server.
+  addr: ":20204"
+
+static:
+  primary: false
+  
+  hostname: "localhost"
+
+  advertise-url: "http://localhost:20202"

@@ -1,2 +1,4 @@
 [DATABASES]
-URL = 'sqlite+aiosqlite:///var/game.db'
+URL = 'sqlite+aiosqlite:///var/primary/mount/game.db'
+URLONE = 'sqlite+aiosqlite:///var/secondaryOne/mount/game.db'
+URLTWO = 'sqlite+aiosqlite:///var/secondaryTwo/mount/game.db'

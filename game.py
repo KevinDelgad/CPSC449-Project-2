@@ -8,6 +8,8 @@ import sqlite3
 import textwrap
 import uuid
 
+import random
+
 import databases
 import toml
 
@@ -42,11 +44,29 @@ async def _connect_db():
     await database.connect()
     return database
 
+async def _connect_replica_db():
+    random_db = random.randint(0, 2)
+
+    if(random_db == 0):
+        database = databases.Database(app.config["DATABASES"]["URL"])
+    elif(random_db == 1):
+        database = databases.Database(app.config["DATABASES"]["URLONE"])
+    else:
+        database = databases.Database(app.config["DATABASES"]["URLTWO"])
+
+    app.logger.info(random_db)
+    await database.connect()
+    return database
 
 def _get_db():
     if not hasattr(g, "sqlite_db"):
         g.sqlite_db = _connect_db()
     return g.sqlite_db
+
+def _get_replica_db():
+    if not hasattr(g, "sqlite_replica_db"):
+        g.sqlite_replica_db = _connect_replica_db()
+    return g.sqlite_replica_db
 
 
 @app.teardown_appcontext
@@ -55,6 +75,11 @@ async def close_connection(exception):
     if db is not None:
         await db.disconnect()
 
+@app.teardown_appcontext
+async def close_replica_connection(exception):
+    db = getattr(g, "_sqlite_replica_db", None)
+    if db is not None:
+        await db.disconnect()
 
 @app.route("/", methods=["GET"])
 def index():
@@ -197,7 +222,7 @@ async def add_guess(data):
 
 @app.route("/games/all", methods=["GET"])
 async def all_games():
-    db = await _get_db()
+    db = await _get_replica_db()
     auth = request.authorization
     games_val = await db.fetch_all( "SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":auth["username"],"gstate":"In-progress"})
     # app.logger.info(""""SELECT * FROM game as a where gameid IN (select gameid from games where username = :username) and a.gstate = :gstate;", values = {"username":username,"gstate":"In-progress"}""")
@@ -218,11 +243,10 @@ ID_PARAM = [
 
 @app.route("/games/id", methods=["GET"])
 async def my_game():
-    db = await _get_db()
+    db = await _get_replica_db()
     auth = request.authorization
     gamesid = request.args
     valid = await db.fetch_one("SELECT gameid FROM games where username = :username and gameid = :gameid;", values = {"username":auth["username"],"gameid":gamesid[ID_PARAM[0].name]})
-    app.logger.info(valid)
     if valid is None:
         return { "Message": "Not Valid Id for this user!" },406
     if request.args.get(ID_PARAM[0].name):

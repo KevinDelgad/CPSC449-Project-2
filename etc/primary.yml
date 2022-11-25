@@ -1,0 +1,18 @@
+mount-dir : 'var/primary/mount'
+
+data-dir : 'var/primary/data'
+
+exec: hypercorn game --reload --debug --bind game.local.gd:$PORT --access-logfile - --error-logfile - --log-level DEBUG
+
+http:
+  # Specifies the bind address of the HTTP API server.
+  addr: ":20202"
+
+static:
+
+  primary: true
+  
+  hostname: "localhost"
+
+  advertise-url: "http://localhost:20202"
+
